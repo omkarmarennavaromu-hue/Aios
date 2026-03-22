@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AI OS · Nexus</title>
+    <!-- Marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            color: #eef2ff;
+        }
+
+        /* custom scroll */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1e2a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b3b4d;
+            border-radius: 10px;
+        }
+
+        /* main app grid */
+        .app {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            background: #0f0f14;
+            position: relative;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: #121217;
+            backdrop-filter: blur(2px);
+            border-right: 1px solid #2a2a32;
+            transition: width 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        /* branding area */
+        .brand {
+            padding: 24px 20px;
+            border-bottom: 1px solid #25252e;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .sidebar.collapsed .brand {
+            justify-content: center;
+            padding: 24px 0;
+        }
+
+        .logo {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #4f9eff, #9b6eff);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(79, 158, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .brand-text {
+            font-weight: 600;
+            font-size: 1.35rem;
+            letter-spacing: -0.3px;
+            background: linear-gradient(120deg, #ffffff, #b8c7ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .brand-text {
+            display: none;
+        }
+
+        /* mode section */
+        .mode-section {
+            margin-top: 32px;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sidebar.collapsed .mode-section {
+            padding: 0 12px;
+            align-items: center;
+        }
+
+        .mode-btn {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 18px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #b9c3e6;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .mode-btn {
+            justify-content: center;
+            padding: 12px 0;
+        }
+
+        .mode-btn i {
+            font-size: 1.4rem;
+            width: 28px;
+            text-align: center;
+            font-style: normal;
+            font-weight: 500;
+        }
+
+        .mode-btn span {
+            flex: 1;
+            text-align: left;
+        }
+
+        .sidebar.collapsed .mode-btn span {
+            display: none;
+        }
+
+        .mode-btn.active {
+            background: #20202b;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 0.5px solid #3a3a48;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: #1b1b24;
+            color: #dfe6ff;
+        }
+
+        /* toggle button */
+        .toggle-sidebar {
+            margin-top: auto;
+            margin-bottom: 28px;
+            margin-left: 16px;
+            margin-right: 16px;
+            background: #1d1d26;
+            border: none;
+            color: #b9c3e6;
+            border-radius: 40px;
+            padding: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            transition: 0.2s;
+        }
+
+        .sidebar.collapsed .toggle-sidebar {
+            margin-left: 12px;
+            margin-right: 12px;
+        }
+
+        .toggle-sidebar span {
+            font-size: 1.2rem;
+        }
+
+        .sidebar.collapsed .toggle-sidebar .toggle-text {
+            display: none;
+        }
+
+        /* MAIN CHAT AREA */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f0f14;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px 120px 28px;
+            scroll-behavior: smooth;
+        }
+
+        /* message bubbles */
+        .message {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 28px;
+            animation: fadeSlideUp 0.25s ease-out;
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 28px;
+            background: #27272e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            background: #2c2c38;
+            color: #9ab3ff;
+        }
+        .message.assistant .avatar {
+            background: linear-gradient(145deg, #2f2f3e, #1f1f2a);
+            color: #c084fc;
+        }
+
+        .content {
+            flex: 1;
+            line-height: 1.55;
+            font-size: 0.98rem;
+        }
+
+        .message.user .content {
+            background: #181820;
+            padding: 12px 18px;
+            border-radius: 24px;
+            border-bottom-right-radius: 6px;
+        }
+
+        .message.assistant .content {
+            padding: 2px 4px;
+        }
+
+        /* markdown styling */
+        .content p {
+            margin: 0.5em 0;
+        }
+        .content pre {
+            background: #0c0c12;
+            padding: 14px;
+            border-radius: 16px;
+            overflow-x: auto;
+            margin: 12px 0;
+            border: 1px solid #2a2a32;
+        }
+        .content code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: #1a1a24;
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+        .content pre code {
+            background: transparent;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        .content h1, .content h2, .content h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .content ul, .content ol {
+            padding-left: 1.5rem;
+            margin: 0.6rem 0;
+        }
+        .content li {
+            margin: 0.2rem 0;
+        }
+        .content blockquote {
+            border-left: 3px solid #4f9eff;
+            padding-left: 1rem;
+            color: #b9c3e6;
+            margin: 0.8rem 0;
+        }
+
+        /* streaming cursor */
+        .streaming-cursor::after {
+            content: "▋";
+            display: inline-block;
+            animation: blink 1s step-end infinite;
+            margin-left: 2px;
+            color: #5f7ef2;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* input area */
+        .input-wrapper {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, #0f0f14 80%, transparent);
+            padding: 20px 28px 28px;
+        }
+
+        .input-group {
+            background: #191921;
+            border-radius: 28px;
+            display: flex;
+            align-items: flex-end;
+            border: 1px solid #2e2e3a;
+            transition: 0.2s;
+            backdrop-filter: blur(4px);
+        }
+
+        textarea {
+            background: transparent;
+            border: none;
+            padding: 16px 20px;
+            font-size: 0.95rem;
+            color: #f0f3ff;
+            font-family: inherit;
+            resize: none;
+            width: 100%;
+            outline: none;
+            max-height: 140px;
+            line-height: 1.4;
+        }
+
+        textarea::placeholder {
+            color: #5b5b70;
+        }
+
+        button#sendBtn {
+            background: #2f2f3e;
+            border: none;
+            margin: 12px 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 40px;
+            color: white;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button#sendBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #8b8dab;
+            border-radius: 50%;
+            animation: wave 1.2s infinite ease;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes wave {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* mobile */
+        @media (max-width: 640px) {
+            .sidebar {
+                position: fixed;
+                height: 100%;
+                z-index: 20;
+                transform: translateX(0);
+                transition: transform 0.3s, width 0.3s;
+            }
+            .sidebar.collapsed {
+                width: 70px;
+            }
+            .messages-area {
+                padding: 16px 16px 120px 16px;
+            }
+            .input-wrapper {
+                padding: 16px;
+            }
+        }
+
+        .error-message {
+            color: #ffa08e;
+            background: #2a1a1a;
+            padding: 12px;
+            border-radius: 18px;
+            border-left: 4px solid #ff6b4a;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="logo">⌘</div>
+            <div class="brand-text">AI OS</div>
+        </div>
+        <div class="mode-section">
+            <button class="mode-btn" data-mode="chat">
+                <i>💬</i><span>Chat</span>
+            </button>
+            <button class="mode-btn" data-mode="research">
+                <i>🔬</i><span>Research</span>
+            </button>
+            <button class="mode-btn" data-mode="study">
+                <i>📘</i><span>Study</span>
+            </button>
+        </div>
+        <button class="toggle-sidebar" id="toggleSidebarBtn">
+            <span>◀</span><span class="toggle-text">Collapse</span>
+        </button>
+    </aside>
+
+    <main class="chat-container">
+        <div class="messages-area" id="messagesArea">
+            <!-- dynamic messages appear here -->
+            <div class="message assistant">
+                <div class="avatar">✨</div>
+                <div class="content"><p>Hello, I'm AI OS. Choose a mode and ask anything — responses stream in real time.</p></div>
+            </div>
+        </div>
+        <div class="input-wrapper">
+            <div class="input-group">
+                <textarea id="userInput" rows="1" placeholder="Ask anything... (Enter to send)"></textarea>
+                <button id="sendBtn">➤</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // ---------- DOM elements ----------
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggleSidebarBtn');
+    const messagesArea = document.getElementById('messagesArea');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    // ---------- state ----------
+    let currentMode = 'chat';          // 'chat', 'research', 'study'
+    let messages = [];                 // { role, content }
+    let isStreaming = false;
+    let currentAssistantMessageDiv = null;
+    let streamContent = '';
+    let abortController = null;
+
+    // ---------- system prompts ----------
+    const systemPrompts = {
+        chat: "You are a friendly, concise AI assistant. Provide clear and simple answers. Be helpful and conversational.",
+        research: "You are an expert research assistant. Provide deep, structured explanations, cite concepts, use headings and detailed analysis. Be thorough and well-organized.",
+        study: "You are a specialized JEE/NDA level tutor. Teach step-by-step, break down concepts, use examples, and encourage understanding. Format with bullet points and clear sections."
+    };
+
+    // ---------- localStorage helpers ----------
+    function loadHistory() {
+        const stored = localStorage.getItem('ai_os_conversation');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    messages = parsed;
+                }
+            } catch(e) { console.warn(e); }
+        }
+        if (!messages.length) {
+            // default welcome
+            messages = [{ role: 'assistant', content: 'Hello, I\'m AI OS. Choose a mode and ask anything — responses stream in real time.' }];
+        }
+        renderAllMessages();
+    }
+
+    function saveHistory() {
+        localStorage.setItem('ai_os_conversation', JSON.stringify(messages));
+    }
+
+    // ---------- render full chat from messages array ----------
+    function renderAllMessages() {
+        messagesArea.innerHTML = '';
+        messages.forEach(msg => {
+            appendMessageElement(msg.role, msg.content, false);
+        });
+        scrollToBottom();
+    }
+
+    function appendMessageElement(role, content, isStreamingPartial = false) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${role}`;
+        const avatarSpan = document.createElement('div');
+        avatarSpan.className = 'avatar';
+        avatarSpan.innerText = role === 'user' ? '👤' : (role === 'assistant' ? '🧠' : '⚡');
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'content';
+        if (role === 'assistant') {
+            if (isStreamingPartial) {
+                // render raw markdown but with streaming cursor
+                const rawHtml = marked.parse(content || ' ');
+                contentDiv.innerHTML = rawHtml;
+                const cursorSpan = document.createElement('span');
+                cursorSpan.className = 'streaming-cursor';
+                cursorSpan.innerHTML = '';
+                contentDiv.appendChild(cursorSpan);
+            } else {
+                contentDiv.innerHTML = marked.parse(content);
+            }
+        } else {
+            contentDiv.innerText = content;
+        }
+        msgDiv.appendChild(avatarSpan);
+        msgDiv.appendChild(contentDiv);
+        messagesArea.appendChild(msgDiv);
+        scrollToBottom();
+        return contentDiv;
+    }
+
+    function updateStreamingMessage(content) {
+        if (!currentAssistantMessageDiv) return;
+        const contentDiv = currentAssistantMessageDiv.querySelector('.content');
+        if (contentDiv) {
+            const rawHtml = marked.parse(content);
+            contentDiv.innerHTML = rawHtml;
+            const cursorSpan = document.createElement('span');
+            cursorSpan.className = 'streaming-cursor';
+            contentDiv.appendChild(cursorSpan);
+        }
+        scrollToBottom();
+    }
+
+    function finishStreamingMessage(finalContent) {
+        if (currentAssistantMessageDiv) {
+            const contentDiv = currentAssistantMessageDiv.querySelector('.content');
+            if (contentDiv) {
+                contentDiv.innerHTML = marked.parse(finalContent);
+                // remove any lingering cursor
+                const cursors = contentDiv.querySelectorAll('.streaming-cursor');
+                cursors.forEach(c => c.remove());
+            }
+            currentAssistantMessageDiv = null;
+        }
+        streamContent = '';
+    }
+
+    function scrollToBottom() {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // show temporary typing indicator (non-streaming loading)
+    function showTypingIndicator() {
+        const indicatorDiv = document.createElement('div');
+        indicatorDiv.className = 'message assistant';
+        indicatorDiv.id = 'typingIndicator';
+        indicatorDiv.innerHTML = `<div class="avatar">🧠</div><div class="content"><div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>`;
+        messagesArea.appendChild(indicatorDiv);
+        scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    // send streaming request
+    async function sendMessageToAPI(userMessageText) {
+        if (isStreaming) return;
+
+        // add user message to UI and memory
+        messages.push({ role: 'user', content: userMessageText });
+        saveHistory();
+        appendMessageElement('user', userMessageText, false);
+
+        // prepare new assistant message placeholder
+        const assistantMsgDiv = document.createElement('div');
+        assistantMsgDiv.className = 'message assistant';
+        const avatarSpan = document.createElement('div');
+        avatarSpan.className = 'avatar';
+        avatarSpan.innerText = '🧠';
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'content';
+        contentDiv.innerHTML = '<span class="streaming-cursor"></span>';
+        assistantMsgDiv.appendChild(avatarSpan);
+        assistantMsgDiv.appendChild(contentDiv);
+        messagesArea.appendChild(assistantMsgDiv);
+        currentAssistantMessageDiv = assistantMsgDiv;
+        streamContent = '';
+        scrollToBottom();
+
+        isStreaming = true;
+        sendBtn.disabled = true;
+        userInput.disabled = true;
+
+        // Build conversation history for API (include system prompt dynamically)
+        const apiHistory = [
+            { role: 'system', content: systemPrompts[currentMode] },
+            ...messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
+        ];
+
+        abortController = new AbortController();
+
+        try {
+            const response = await fetch('/api/chat.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: userMessageText,
+                    mode: currentMode,
+                    history: apiHistory
+                }),
+                signal: abortController.signal
+            });
+
+            if (!response.ok) {
+                let errMsg = `API error ${response.status}`;
+                try {
+                    const errData = await response.json();
+                    errMsg = errData.error || errMsg;
+                } catch(e) {}
+                throw new Error(errMsg);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+                        try {
+                            const parsed = JSON.parse(data);
+                            const token = parsed.choices?.[0]?.delta?.content || '';
+                            if (token) {
+                                streamContent += token;
+                                updateStreamingMessage(streamContent);
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+            // finalize
+            finishStreamingMessage(streamContent);
+            messages.push({ role: 'assistant', content: streamContent });
+            saveHistory();
+
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                // ignore
+            } else {
+                console.error(err);
+                finishStreamingMessage(streamContent + (streamContent ? '' : '⚠️ Error: ' + err.message));
+                if (currentAssistantMessageDiv) {
+                    const errDiv = currentAssistantMessageDiv.querySelector('.content');
+                    if (errDiv && !streamContent) {
+                        errDiv.innerHTML = `<div class="error-message">⚠️ ${err.message}. Please try again.</div>`;
+                    } else {
+                        // append error note
+                        const errorNote = document.createElement('div');
+                        errorNote.className = 'error-message';
+                        errorNote.innerText = `\n⚠️ ${err.message}`;
+                        errDiv.appendChild(errorNote);
+                    }
+                    messages.push({ role: 'assistant', content: streamContent || `Error: ${err.message}` });
+                    saveHistory();
+                } else {
+                    appendMessageElement('assistant', `⚠️ Request failed: ${err.message}`, false);
+                    messages.push({ role: 'assistant', content: `Error: ${err.message}` });
+                    saveHistory();
+                }
+            }
+        } finally {
+            isStreaming = false;
+            sendBtn.disabled = false;
+            userInput.disabled = false;
+            userInput.focus();
+            abortController = null;
+            currentAssistantMessageDiv = null;
+            streamContent = '';
+            scrollToBottom();
+        }
+    }
+
+    // mode switching
+    function setActiveMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            if (btn.getAttribute('data-mode') === mode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        // optional system notification but no forced message
+    }
+
+    // sidebar toggle
+    function toggleSidebar() {
+        sidebar.classList.toggle('collapsed');
+        const toggleSpan = toggleBtn.querySelector('.toggle-text');
+        if (sidebar.classList.contains('collapsed')) {
+            toggleSpan.innerText = 'Expand';
+            toggleBtn.querySelector('span:first-child').innerHTML = '▶';
+        } else {
+            toggleSpan.innerText = 'Collapse';
+            toggleBtn.querySelector('span:first-child').innerHTML = '◀';
+        }
+    }
+
+    // event handlers
+    function handleSend() {
+        const text = userInput.value.trim();
+        if (!text || isStreaming) return;
+        userInput.value = '';
+        userInput.style.height = 'auto';
+        sendMessageToAPI(text);
+    }
+
+    function autoResizeTextarea() {
+        userInput.style.height = 'auto';
+        userInput.style.height = Math.min(userInput.scrollHeight, 140) + 'px';
+    }
+
+    // initialize UI
+    function init() {
+        loadHistory();
+
+        // mode buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mode = btn.getAttribute('data-mode');
+                setActiveMode(mode);
+            });
+        });
+        setActiveMode('chat');
+
+        toggleBtn.addEventListener('click', toggleSidebar);
+
+        sendBtn.addEventListener('click', handleSend);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+        userInput.addEventListener('input', autoResizeTextarea);
+        userInput.focus();
+    }
+
+    init();
+</script>
+</body>
+</html>
